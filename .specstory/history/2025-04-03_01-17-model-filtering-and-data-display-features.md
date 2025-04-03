@@ -3240,6 +3240,158 @@ To fix the empty label warning in your Streamlit sliders, you need to provide a 
 
 ---
 
+```diff
+      with st.expander("Context length", expanded=True):
+          min_context, max_context = st.slider(
+-             "",
++             "Context Length Range",
+              min_value=1000,
+              max_value=1000000,
+              value=(4000, 128000),
+              step=1000,
+              format="%d",
++             label_visibility="collapsed"
+          )
+          # st.write("4K", "64K", "1M")
+      with st.expander("Prompt pricing", expanded=True):
+          min_price, max_price = st.slider(
+-             "",
++             "Price Range",
+              min_value=0.0,
+              max_value=0.01,
+              value=(0.0, 0.01),
+              step=0.0001,
+              format="%.5f",
++             label_visibility="collapsed"
+          )
+          # st.write("FREE", "$0.5", "$10+")
+```
+
+---
+
+```diff
+  import streamlit as st
+  import pandas as pd
++ import sys
++ import os
++ 
++ # Add parent directory to path to import the OpenRouter class
++ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+  from open_router import OpenRouter
+  
+```
+
+---
+
+Now you've fixed both issues:
+
+1. The empty label warning is resolved by providing proper labels for your sliders with `label_visibility="collapsed"`. This approach:
+   - Provides a meaningful label for accessibility (screen readers can announce the slider's purpose)
+   - Visually hides the label using the `collapsed` visibility option
+   - Maintains clean visual design while being accessible
+
+2. The module import error is fixed by adding the parent directory to the Python path using:
+   ```python
+   sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+   ```
+
+This approach ensures that Python can find the `open_router.py` module when your Streamlit app runs from the `pages` directory.
+
+Try running the app again with:
+```
+streamlit run pages/9_OpenRouter_models.py
+```
+
+The app should now load without warnings and properly display the OpenRouter models with all your filtering options working correctly.
+
+---
+
+_**User**_
+
+Is it possible that we format the slider format to be like "4K" "64K" "1M"?
+
+---
+
+_**Assistant**_
+
+
+
+---
+
+Yes, we can add custom formatting to display the context length values as "4K", "64K", and "1M". We'll need to:
+
+1. Create a formatting function
+2. Display the formatted values below the slider
+
+Here's how to implement it:
+
+---
+
+
+
+---
+
+Let's try again with a different approach:
+
+---
+
+```diff
+  from open_router import OpenRouter
+  
++ # Helper function to format numbers as K/M notation
++ def format_number(num):
++     if num >= 1000000:
++         return f"{num/1000000:.0f}M"
++     elif num >= 1000:
++         return f"{num/1000:.0f}K"
++     else:
++         return str(num)
++ 
+  # Page configuration
+  st.set_page_config(page_title="OpenRouter Models", layout="wide")
+              st.write("**ID:** ", model_data["id"])
+              st.write("**Description:** ", model_data["description"])
+-             st.write("**Context Length:** ", model_data["context_length"], " tokens")
++             st.write("**Context Length:** ", format_number(model_data["context_length"]), " tokens")
+              st.write("**Tokenizer:** ", model_data["tokenizer"])
+              st.write(
+```
+
+---
+
+Now let's update the context length slider section:
+
+---
+
+```diff
+              step=1000,
+              format="%d",
+-             label_visibility="collapsed",
++             label_visibility="collapsed"
+          )
+-         # st.write("4K", "64K", "1M")
++         
++         # Display formatted values
++         st.caption(f"Selected: {format_number(min_context)} - {format_number(max_context)}")
++         
++         # Display scale markers
++         cols = st.columns(7)
++         with cols[0]:
++             st.write("4K")
++         with cols[3]:
++             st.write("64K")
++         with cols[6]:
++             st.write("1M")
+  
+      # Prompt pricing
+```
+
+---
+
+Now let's also update the price slider to match the same style:
+
+---
+
 Cancelled
 
 ---

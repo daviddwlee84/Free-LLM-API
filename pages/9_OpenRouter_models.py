@@ -1,10 +1,25 @@
 import streamlit as st
-import pandas as pd
 from open_router import OpenRouter
+
+
+# Helper function to format numbers as K/M notation
+def format_number(num):
+    if num >= 1000000:
+        return f"{num/1000000:.0f}M"
+    elif num >= 1000:
+        return f"{num/1000:.0f}K"
+    else:
+        return str(num)
+
 
 # Page configuration
 st.set_page_config(page_title="OpenRouter Models", layout="wide")
 st.title("OpenRouter Models")
+
+st.link_button("OpenRouter Models", "https://openrouter.ai/models")
+st.link_button(
+    "OpenRouter API", "https://openrouter.ai/docs/api-reference/list-available-models"
+)
 
 # Initialize OpenRouter API
 api = OpenRouter()
@@ -49,7 +64,11 @@ with st.sidebar:
             format="%d",
             label_visibility="collapsed",
         )
-        # st.write("4K", "64K", "1M")
+
+        # Display formatted values
+        st.caption(
+            f"Selected: {format_number(min_context)} - {format_number(max_context)}"
+        )
 
     # Prompt pricing
     with st.expander("Prompt pricing", expanded=True):
@@ -62,19 +81,26 @@ with st.sidebar:
             format="%.5f",
             label_visibility="collapsed",
         )
-        # st.write("FREE", "$0.5", "$10+")
 
-    # Series
-    with st.expander("Series", expanded=True):
-        series_gpt = st.checkbox("GPT")
-        series_claude = st.checkbox("Claude")
-        series_gemini = st.checkbox("Gemini")
-        series_more = st.checkbox("More...")
+        # Display formatted price values
+        price_min_text = "FREE" if min_price == 0 else f"${min_price:.7f}"
+        price_max_text = f"${max_price:.7f}"
+        st.caption(f"Selected: {price_min_text} - {price_max_text}")
 
-    # Category
-    with st.expander("Category", expanded=True):
-        category_roleplay = st.checkbox("Roleplay")
-        category_programming = st.checkbox("Programming")
+    # # Series
+    # with st.expander("Series", expanded=True):
+    #     series_gpt = st.checkbox("GPT")
+    #     series_claude = st.checkbox("Claude")
+    #     series_gemini = st.checkbox("Gemini")
+    #     series_more = st.checkbox("More...")
+    #
+    # # Category
+    # with st.expander("Category", expanded=True):
+    #     category_roleplay = st.checkbox("Roleplay")
+    #     category_programming = st.checkbox("Programming")
+    #
+    # # Supported Parameters
+    # # Providers
 
 # Apply filters to get models
 filters = {}
@@ -100,19 +126,19 @@ df = api.list_models_df(filtered_models)
 
 # Apply additional post-query filters
 # Series filtering (post-query)
-series_filters = []
-if series_gpt:
-    series_filters.append(df["name"].str.contains("GPT", case=False))
-if series_claude:
-    series_filters.append(df["name"].str.contains("Claude", case=False))
-if series_gemini:
-    series_filters.append(df["name"].str.contains("Gemini", case=False))
-
-if series_filters:
-    combined_filter = series_filters[0]
-    for filter_condition in series_filters[1:]:
-        combined_filter = combined_filter | filter_condition
-    df = df[combined_filter]
+# series_filters = []
+# if series_gpt:
+#     series_filters.append(df["name"].str.contains("GPT", case=False))
+# if series_claude:
+#     series_filters.append(df["name"].str.contains("Claude", case=False))
+# if series_gemini:
+#     series_filters.append(df["name"].str.contains("Gemini", case=False))
+#
+# if series_filters:
+#     combined_filter = series_filters[0]
+#     for filter_condition in series_filters[1:]:
+#         combined_filter = combined_filter | filter_condition
+#     df = df[combined_filter]
 
 # Context length filtering (post-query)
 df = df[(df["context_length"] >= min_context) & (df["context_length"] <= max_context)]
@@ -138,6 +164,7 @@ if not df.empty:
     )
 
     # Create a clean display columns
+    # TODO: input token price, output token price
     display_columns = [
         "name",
         "Price (Prompt)",
@@ -177,7 +204,11 @@ if not df.empty:
             st.subheader(model_data["name"])
             st.write("**ID:** ", model_data["id"])
             st.write("**Description:** ", model_data["description"])
-            st.write("**Context Length:** ", model_data["context_length"], " tokens")
+            st.write(
+                "**Context Length:** ",
+                format_number(model_data["context_length"]),
+                " tokens",
+            )
             st.write("**Tokenizer:** ", model_data["tokenizer"])
             st.write(
                 "**Input Modalities:** ", ", ".join(model_data["input_modalities"])

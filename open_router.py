@@ -58,6 +58,8 @@ class OpenRouter:
         """
         Retrieve and filter models from OpenRouter API
 
+        https://openrouter.ai/docs/api-reference/list-available-models
+
         Args:
             min_price_prompt: Minimum price per prompt token
             max_price_prompt: Maximum price per prompt token
