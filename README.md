@@ -19,5 +19,6 @@ Models
 
 - Multi-Modalities
   - list in table
+  - list models: [OpenRouter - List available models](https://openrouter.ai/docs/api-reference/list-available-models)
 - Limitations
   - quota / usage
