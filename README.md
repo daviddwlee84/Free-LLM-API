@@ -15,6 +15,14 @@ Models
 - Together AI
   - [Together AI | FLUX.1 [schnell] Free API](https://www.together.ai/models/flux-1-schnell)
 
+## Getting Started
+
+```bash
+uv install
+
+streamlit run Overview.py
+```
+
 ## Todo
 
 - Multi-Modalities
