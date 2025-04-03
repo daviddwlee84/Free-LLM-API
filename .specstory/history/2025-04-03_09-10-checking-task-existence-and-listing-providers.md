@@ -476,6 +476,110 @@ I'll fix the nested expander issue:
 
 ---
 
+Let me try again with the full context:
+
+---
+
+Read file: pages/10_HuggingFace_models.py
+
+---
+
+Let me see the current state of the file:
+
+---
+
+<details>
+            <summary>Grep search for "with st.expander\("Providers for Missing Tasks"" • **3** files</summary>
+        
+| File | Line | Match |
+|------|------|-------|
+| `file:///Users/daviddwlee84/Documents/Program/Personal/Free-LLM-API/pages/10_HuggingFace_models.py` | L196 | `with st.expander("Providers for Missing Tasks", expanded=False):` |
+| `file:///Users/daviddwlee84/Documents/Program/Personal/Free-LLM-API/.specstory/history/2025-04-03_09-10-checking-task-existence-and-listing-providers.md` | L402 | `+                 with st.expander("Providers for Missing Tasks", expanded=False):` |
+| `file:///Users/daviddwlee84/Documents/Program/Personal/Free-LLM-API/pages/10_HuggingFace_models.py` | L196 | `with st.expander("Providers for Missing Tasks", expanded=False):` |
+
+</details>
+
+---
+
+Now let me fix the nested expander issue:
+
+---
+
+```diff
+                  )
+  
+-                 # Show which providers support each missing task
+-                 with st.expander("Providers for Missing Tasks", expanded=False):
++                 # Show which providers support each missing task - without using a nested expander
++                 st.subheader("Providers for Missing Tasks")
+                  missing_task_data = []
+                  for task in sorted(missing_tasks):
+```
+
+---
+
+The error has been fixed by removing the nested expander that was causing the issue. Instead of using another expander inside the "Available Providers" expander, I've replaced it with a simple subheader. This avoids the Streamlit limitation that doesn't allow nesting expanders within other expanders.
+
+The functionality remains the same, but now it should work without any errors.
+
+---
+
+_**User**_
+
+Can you refine the `TASKS` to use the abailable list in@huggingface_hub just like the `PROVIDER_LIST`?
+
+---
+
+_**Assistant**_
+
+
+
+---
+
+I'll look for a defined tasks list in the huggingface_hub library:
+
+---
+
+<details>
+            <summary>Grep search for "TASKS" • **0** files</summary>
+        
+No results found
+</details>
+
+---
+
+Let me look for task-related constants:
+
+---
+
+<details>
+            <summary>Grep search for "task" • **0** files</summary>
+        
+No results found
+</details>
+
+---
+
+Let's check for task definitions in inference-related files:
+
+---
+
+<details>
+            <summary>Listed directory .venv/lib/python3.12/site-packages/huggingface_hub/inference • **6** results</summary>
+        
+| Name |
+|-------|
+| 📁 `_providers` |
+| 📁 `__pycache__` |
+| 📁 `_generated` |
+| 📄 `_common.py` |
+| 📄 `_client.py` |
+| 📄 `__init__.py` |
+
+</details>
+
+---
+
 
 
 ---

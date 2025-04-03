@@ -73,41 +73,11 @@ def get_all_supported_tasks():
     return all_tasks
 
 
-# Common NLP and ML tasks from https://huggingface.co/tasks
-# TODO: I remember there is the list in huggingface_hub library, we should use that instead of hardcoding it
-TASKS = [
-    # NLP Tasks
-    "text-generation",
-    "fill-mask",
-    "summarization",
-    "question-answering",
-    "translation",
-    "text-classification",
-    "token-classification",
-    "sentence-similarity",
-    "feature-extraction",
-    "text-to-image",
-    "image-to-text",
-    "zero-shot-classification",
-    # Computer Vision Tasks
-    "image-classification",
-    "object-detection",
-    "image-segmentation",
-    "visual-question-answering",
-    # Audio Tasks
-    "automatic-speech-recognition",
-    "text-to-speech",
-    "audio-classification",
-]
-
-# Add conversational and text-to-video tasks which are widely supported
-TASKS.extend(["conversational", "text-to-video"])
+# Get all tasks from PROVIDERS
+ALL_TASKS = sorted(list(get_all_supported_tasks()))
 
 # Get providers from huggingface_hub
 PROVIDER_LIST = list(PROVIDERS.keys())
-
-# Get all supported tasks
-ALL_SUPPORTED_TASKS = get_all_supported_tasks()
 
 # Page configuration
 st.set_page_config(page_title="HuggingFace Models", layout="wide")
@@ -128,7 +98,7 @@ with st.sidebar:
 
     # Task selection
     with st.expander("Task", expanded=True):
-        selected_task = st.selectbox("Select Task", options=["Any"] + TASKS)
+        selected_task = st.selectbox("Select Task", options=["Any"] + ALL_TASKS)
 
     # Inference state
     with st.expander("Inference State", expanded=True):
@@ -160,23 +130,12 @@ with st.sidebar:
                 # Get supported tasks from the PROVIDERS dictionary
                 supported_tasks = list(PROVIDERS[provider].keys())
 
-                # Check which of our defined TASKS are supported
-                supported_in_our_list = []
-                for task in TASKS:
-                    if task in supported_tasks:
-                        supported_in_our_list.append(task)
-
                 provider_data.append(
                     {
                         "Provider": provider,
                         "Supported Tasks Count": len(supported_tasks),
-                        "All Supported Tasks": (
+                        "Supported Tasks": (
                             ", ".join(supported_tasks) if supported_tasks else "None"
-                        ),
-                        "Matching Our Tasks": (
-                            ", ".join(supported_in_our_list)
-                            if supported_in_our_list
-                            else "None"
                         ),
                     }
                 )
@@ -185,40 +144,10 @@ with st.sidebar:
                 pd.DataFrame(provider_data), use_container_width=True, hide_index=True
             )
 
-            # Check for missing tasks in our TASKS list
-            missing_tasks = ALL_SUPPORTED_TASKS.difference(TASKS)
-            if missing_tasks:
-                st.subheader("Tasks Not In Our List")
-                st.info(
-                    f"These tasks are supported by providers but not in our TASKS list: {', '.join(sorted(missing_tasks))}"
-                )
-
-                # Show which providers support each missing task - without using a nested expander
-                st.subheader("Providers for Missing Tasks")
-                missing_task_data = []
-                for task in sorted(missing_tasks):
-                    supporting_providers = []
-                    for provider in PROVIDER_LIST:
-                        if task in PROVIDERS[provider]:
-                            supporting_providers.append(provider)
-                    missing_task_data.append(
-                        {
-                            "Task": task,
-                            "Supporting Providers": ", ".join(supporting_providers),
-                            "Provider Count": len(supporting_providers),
-                        }
-                    )
-
-                st.dataframe(
-                    pd.DataFrame(missing_task_data),
-                    use_container_width=True,
-                    hide_index=True,
-                )
-
             # Add a task existence checker
             st.subheader("Task Support Checker")
             task_to_check = st.selectbox(
-                "Select a task to check support", options=TASKS
+                "Select a task to check support", options=ALL_TASKS
             )
             if task_to_check:
                 supporting_providers = []

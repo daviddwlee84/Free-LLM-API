@@ -41,8 +41,8 @@ with st.sidebar:
     # Get available models
     available_models = {
         "hf-inference": [
-            "nitrosocke/Ghibli-Diffusion",
             "stabilityai/stable-diffusion-xl-refiner-1.0",
+            "nitrosocke/Ghibli-Diffusion",
             "enhanceaiteam/Flux-Uncensored-V2",
             "R1000/Flux.1-dev-Controlnet-Upscaler",
             "R1000/Flux-Super-Realism-LoRA-i2i",
