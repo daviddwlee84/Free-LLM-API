@@ -14,6 +14,10 @@ st.link_button(
     "https://huggingface.co/docs/inference-providers/tasks/text-to-image",
 )
 
+"""
+[Text to Image](https://huggingface.co/docs/inference-providers/en/tasks/text-to-image)
+"""
+
 # Sidebar for API settings
 with st.sidebar:
     api_settings_ui()

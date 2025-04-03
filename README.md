@@ -6,6 +6,7 @@ Providers
   - [Playground - Hugging Face](https://huggingface.co/playground) (text model only)
   - [Quickstart](https://huggingface.co/docs/huggingface_hub/v0.30.1/quick-start#authentication)
   - [Run Inference on servers](https://huggingface.co/docs/huggingface_hub/v0.30.1/guides/inference)
+  - [API Reference](https://huggingface.co/docs/inference-providers/tasks/index)
 - [OpenRouter](https://openrouter.ai/)
   - [OpenRouter FAQ | Developer Documentation — OpenRouter | Documentation](https://openrouter.ai/docs/faq#what-free-tier-options-exist) => low rate limits (200 requests per day total)
 - [Together AI – The AI Acceleration Cloud - Fast Inference, Fine-Tuning & Training](https://www.together.ai/)
