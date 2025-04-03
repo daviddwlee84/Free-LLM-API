@@ -9,4 +9,14 @@ with st.sidebar:
 
     api_settings_ui()
 
+"""
+[What is Image-Text-to-Text? - Hugging Face](https://huggingface.co/tasks/image-text-to-text)
+
+curl https://router.huggingface.co/hf-inference/models/meta-llama/Llama-3.2-11B-Vision-Instruct \
+    -X POST \
+    -d '{"messages": [{"role": "user","content": [{"type": "image"}, {"type": "text", "text": "Can you describe the image?"}]}]}' \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer hf_***"
+"""
+
 st.title("Text + Image -> Text")

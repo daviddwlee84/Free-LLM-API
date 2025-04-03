@@ -215,6 +215,565 @@ _**Assistant**_
 
 ---
 
+```diff
++ import streamlit as st
+  from huggingface_hub import HfApi
+- import argparse
+- import streamlit as st
+- 
+- # List of common NLP and ML tasks from https://huggingface.co/tasks
++ import pandas as pd
++ 
++ # Helper function to format numbers as K/M notation
++ def format_number(num):
++     if num is None:
++         return "N/A"
++     if num >= 1000000:
++         return f"{num/1000000:.1f}M"
++     elif num >= 1000:
++         return f"{num/1000:.1f}K"
++     else:
++         return str(num)
++ 
++ # Common NLP and ML tasks from https://huggingface.co/tasks
+  TASKS = [
+      # NLP Tasks
+      "text-generation",
+-     "translation",
++     "fill-mask", 
+      "summarization", 
+      "question-answering",
+-     "fill-mask",
++     "translation",
+      "text-classification", 
+      "token-classification", 
+      "text-to-image", 
+      "image-to-text",
++     "zero-shot-classification",
+      # Computer Vision Tasks
+      "image-classification", 
+      "object-detection", 
+      "image-segmentation",
++     "visual-question-answering",
+      # Audio Tasks
+      "automatic-speech-recognition", 
+  ]
+  
+- 
+- def get_models(
+-     task="text-generation",
+-     inference_state="warm",
+-     limit=10,
+-     sort_by="downloads",
+-     direction=-1,
+- ):
+-     """Get models from HuggingFace Hub based on criteria."""
++ # Page configuration
++ st.set_page_config(page_title="HuggingFace Models", layout="wide")
++ st.title("HuggingFace Inference-Ready Models")
++ 
++ st.link_button("HuggingFace Models", "https://huggingface.co/models")
++ st.link_button("HuggingFace Tasks", "https://huggingface.co/tasks")
++ 
++ # Initialize HF API
+  api = HfApi()
+  
+-     models = api.list_models(
+-         task=task,
+-         inference=inference_state,  # "warm", "cold", or "frozen"
+-         sort=sort_by,
+-         direction=direction,
+-         limit=limit,
+-     )
+- 
+-     return list(models)
+- 
+- 
+- def main():
+-     st.title("HuggingFace Inference-Ready Models")
++ # Sidebar filters
++ with st.sidebar:
++     st.header("Filters")
++     
++     # Text search
++     search_text = st.text_input("Search models", placeholder="Enter model name...")
+      
+-     # Sidebar options
+-     st.sidebar.header("Filter Options")
+- 
+-     selected_task = st.sidebar.selectbox("Select Task", options=TASKS, index=0)
+- 
+-     inference_state = st.sidebar.radio(
+-         "Inference State",
+-         options=["warm", "cold"],
++     # Task selection
++     with st.expander("Task", expanded=True):
++         selected_task = st.selectbox("Select Task", options=["Any"] + TASKS)
++     
++     # Inference state
++     with st.expander("Inference State", expanded=True):
++         inference_state = st.radio(
++             "Inference API State",
++             options=["warm", "cold", "Any"],
+              index=0,
+-         help="Warm models are available for immediate use. Cold models will be loaded on first inference call.",
++             help="Warm models are available for immediate use. Cold models will be loaded on first inference call."
+          )
+      
+-     limit = st.sidebar.slider("Number of results", 5, 50, 10)
++     # Result limiting
++     with st.expander("Results", expanded=True):
++         limit = st.slider("Max results", 5, 100, 20)
+          
+-     sort_by = st.sidebar.selectbox(
++     # Sort options
++     with st.expander("Sorting", expanded=True):
++         sort_by = st.selectbox(
+              "Sort by",
+              options=["downloads", "likes", "trending_score", "last_modified"],
+-         index=0,
+-     )
+- 
+-     if st.sidebar.button("Get Models"):
+-         with st.spinner(f"Fetching {inference_state} {selected_task} models..."):
+-             models = get_models(
+-                 task=selected_task,
+-                 inference_state=inference_state,
+-                 limit=limit,
+-                 sort_by=sort_by,
+-             )
+- 
+-             if models:
+-                 st.success(f"Found {len(models)} models")
+- 
+-                 # Display models in a table
+-                 model_data = [
+-                     {
+-                         "Model ID": model.id,
+-                         "Downloads": model.downloads,
+-                         "Likes": model.likes,
+-                         "Last Modified": model.last_modified,
+-                     }
+-                     for model in models
+-                 ]
+- 
+-                 st.table(model_data)
+- 
+-                 # Also show as text for easy copying
+-                 st.subheader("Model IDs:")
++             index=0
++         )
++         
++         sort_direction = st.radio(
++             "Direction",
++             options=["Descending", "Ascending"],
++             index=0,
++             horizontal=True
++         )
++ 
++ # Prepare filter arguments
++ filter_args = {
++     "sort": sort_by,
++     "direction": -1 if sort_direction == "Descending" else 1,
++     "limit": limit
++ }
++ 
++ # Add task filter if specified
++ if selected_task != "Any":
++     filter_args["task"] = selected_task
++ 
++ # Add inference state filter if specified
++ if inference_state != "Any":
++     filter_args["inference"] = inference_state
++ 
++ # Add model name search if provided
++ if search_text:
++     filter_args["model_name"] = search_text
++ 
++ # Display loading spinner
++ with st.spinner(f"Fetching models from HuggingFace Hub..."):
++     # Get models with filters
++     models = list(api.list_models(**filter_args))
++     
++     if models:
++         # Convert to DataFrame
++         data = []
+          for model in models:
+-                     st.code(model.id)
+-             else:
+-                 st.warning(
+-                     f"No {inference_state} models found for task: {selected_task}"
+-                 )
+- 
+- 
+- if __name__ == "__main__":
+-     # Command-line support for non-Streamlit usage
+-     parser = argparse.ArgumentParser(
+-         description="List HuggingFace models filtered by task and inference state"
+-     )
+-     parser.add_argument(
+-         "--task",
+-         choices=TASKS,
+-         default="text-generation",
+-         help="Task to filter models by",
+-     )
+-     parser.add_argument(
+-         "--inference", choices=["warm", "cold"], default="warm", help="Inference state"
+-     )
+-     parser.add_argument(
+-         "--limit", type=int, default=10, help="Maximum number of results"
+-     )
+-     parser.add_argument("--sort", default="downloads", help="Sort criteria")
+-     parser.add_argument(
+-         "--cli", action="store_true", help="Run in CLI mode instead of Streamlit"
+-     )
+- 
+-     args = parser.parse_args()
+- 
+-     if args.cli:
+-         print(f"Fetching {args.inference} models for task: {args.task}")
+-         models = get_models(
+-             task=args.task,
+-             inference_state=args.inference,
+-             limit=args.limit,
+-             sort_by=args.sort,
+-         )
+- 
+-         print(f"\nFound {len(models)} models:")
+-         print("ID | Likes | Downloads")
+-         print("-" * 50)
+-         for model in models:
+-             print(f"{model.id} | {model.likes} | {model.downloads}")
++             data.append({
++                 "Model ID": model.id,
++                 "Pipeline Tag": getattr(model, "pipeline_tag", "N/A"),
++                 "Downloads": getattr(model, "downloads", 0),
++                 "Likes": getattr(model, "likes", 0),
++                 "Last Modified": getattr(model, "last_modified", "N/A"),
++                 "Tags": getattr(model, "tags", []),
++                 "Task": selected_task if selected_task != "Any" else getattr(model, "pipeline_tag", "N/A"),
++                 "Inference Status": inference_state if inference_state != "Any" else "Available",
++             })
++         
++         df = pd.DataFrame(data)
++         
++         # Format values for display
++         display_df = df.copy()
++         display_df["Downloads"] = display_df["Downloads"].apply(format_number)
++         display_df["Likes"] = display_df["Likes"].apply(format_number)
++         
++         # Display model count
++         st.subheader(f"Found {len(df)} models")
++         
++         # Display as dataframe
++         st.dataframe(
++             display_df,
++             use_container_width=True,
++             hide_index=True,
++             column_order=["Model ID", "Task", "Inference Status", "Downloads", "Likes", "Last Modified"]
++         )
++         
++         # Add an expandable section for model details
++         with st.expander("Model Details", expanded=False):
++             # Select a model to see details
++             model_names = df["Model ID"].tolist()
++             selected_model = st.selectbox("Select a model for details", model_names)
++             
++             if selected_model:
++                 model_data = df[df["Model ID"] == selected_model].iloc[0]
++                 
++                 # Display detailed information
++                 st.subheader(model_data["Model ID"])
++                 
++                 col1, col2 = st.columns(2)
++                 
++                 with col1:
++                     st.write("**Task:** ", model_data["Task"])
++                     st.write("**Inference Status:** ", model_data["Inference Status"])
++                     st.write("**Downloads:** ", model_data["Downloads"])
++                 
++                 with col2:
++                     st.write("**Likes:** ", model_data["Likes"])
++                     st.write("**Last Modified:** ", model_data["Last Modified"])
++                     st.write("**Tags:** ", ", ".join(model_data["Tags"]) if isinstance(model_data["Tags"], list) else model_data["Tags"])
++                 
++                 # Model URL
++                 model_url = f"https://huggingface.co/{selected_model}"
++                 st.link_button("View on HuggingFace", model_url)
++                 
++                 # Inference API usage example
++                 st.subheader("Inference API Usage")
++                 code = f"""
++ from huggingface_hub import InferenceClient
++ 
++ # Initialize the client
++ client = InferenceClient()
++ 
++ # Run inference on the model
++ response = client.post(
++     json={{"inputs": "YOUR_INPUT_HERE"}},
++     model="{selected_model}"
++ )
++                 """
++                 st.code(code, language="python")
++                 
+      else:
+-         main()  # Run Streamlit app
++         st.warning(
++             "No models found with the selected filters. Try adjusting your criteria."
++         )
+  
+```
+
+---
+
+I've updated the HuggingFace models page to match the style and functionality of the OpenRouter page. The new version includes:
+
+1. **Improved UI Layout**:
+   - Wide layout with sidebar filters
+   - Header links to HuggingFace resources
+   - Clean dataframe display for model results
+
+2. **Enhanced Filtering Options**:
+   - Task selection with "Any" option
+   - Inference state (warm/cold/any)
+   - Text search for model names
+   - Result limit control
+   - Sort options with direction control
+
+3. **Better Data Presentation**:
+   - Formatted numbers with K/M notation
+   - Column order optimized for readability
+   - Model count displayed prominently
+
+4. **Detailed Model Information**:
+   - Expandable details section for selected models
+   - Two-column display of model attributes
+   - Direct link to model on HuggingFace
+   - Sample code for using the model with InferenceClient
+
+5. **Automatic Loading**:
+   - Models load immediately without needing a button press
+   - Loading spinner provides feedback
+
+This implementation provides a more intuitive and responsive interface for browsing HuggingFace models that are compatible with the Inference API, making it easier to find the right model for your task.
+
+---
+
+_**User**_
+
+Can you list the `inference_provider_mapping` so we can know the provider
+
+---
+
+_**Assistant**_
+
+
+
+---
+
+```diff
+      "audio-classification",
+  ]
++ 
++ # Known inference providers
++ PROVIDERS = [
++     "huggingface",
++     "inference-endpoint",
++     "together-ai",
++     "cohere-ai",
++     "fireworks-ai",
++     "cerebras",
++     "nebius-ai",
++     "hyperbolic",
++     "fal-ai",
++     "black-forest-labs",
++     "novita-ai",
++     "replicate",
++     "sambanova",
++ ]
+  
+  # Page configuration
+          )
+  
++     # Provider selection
++     with st.expander("Inference Provider", expanded=True):
++         selected_provider = st.selectbox(
++             "Provider",
++             options=["Any"] + PROVIDERS,
++             help="Filter models by available inference provider"
++         )
++ 
+      # Result limiting
+      with st.expander("Results", expanded=True):
+      "direction": -1 if sort_direction == "Descending" else 1,
+      "limit": limit,
++     "expand": ["inferenceProviderMapping"]  # Request provider mapping information
+  }
+  
+          data = []
+          for model in models:
+-             data.append(
+-                 {
++             # Get provider mapping if available
++             providers = []
++             provider_mapping = getattr(model, "inference_provider_mapping", {})
++             if provider_mapping:
++                 providers = list(provider_mapping.keys())
++             
++             # Skip if filtering by provider and this model doesn't have it
++             if selected_provider != "Any" and selected_provider not in providers:
++                 continue
++                 
++             data.append({
+                  "Model ID": model.id,
+                  "Pipeline Tag": getattr(model, "pipeline_tag", "N/A"),
+                  "Last Modified": getattr(model, "last_modified", "N/A"),
+                  "Tags": getattr(model, "tags", []),
+-                     "Task": (
+-                         selected_task
+-                         if selected_task != "Any"
+-                         else getattr(model, "pipeline_tag", "N/A")
+-                     ),
+-                     "Inference Status": (
+-                         inference_state if inference_state != "Any" else "Available"
+-                     ),
+-                 }
+-             )
++                 "Task": selected_task if selected_task != "Any" else getattr(model, "pipeline_tag", "N/A"),
++                 "Inference Status": inference_state if inference_state != "Any" else "Available",
++                 "Providers": providers,
++                 "Provider Mapping": provider_mapping
++             })
+          
+          df = pd.DataFrame(data)
+          display_df["Downloads"] = display_df["Downloads"].apply(format_number)
+          display_df["Likes"] = display_df["Likes"].apply(format_number)
++         display_df["Providers"] = display_df["Providers"].apply(lambda x: ", ".join(x) if x else "None")
+          
+          # Display model count
+              use_container_width=True,
+              hide_index=True,
+-             column_order=[
+-                 "Model ID",
+-                 "Task",
+-                 "Inference Status",
+-                 "Downloads",
+-                 "Likes",
+-                 "Last Modified",
+-             ],
++             column_order=["Model ID", "Task", "Inference Status", "Providers", "Downloads", "Likes", "Last Modified"]
+          )
+          
+                      st.write("**Inference Status:** ", model_data["Inference Status"])
+                      st.write("**Downloads:** ", model_data["Downloads"])
++                     st.write("**Likes:** ", model_data["Likes"])
+                  
+                  with col2:
+-                     st.write("**Likes:** ", model_data["Likes"])
+                      st.write("**Last Modified:** ", model_data["Last Modified"])
+-                     st.write(
+-                         "**Tags:** ",
+-                         (
+-                             ", ".join(model_data["Tags"])
+-                             if isinstance(model_data["Tags"], list)
+-                             else model_data["Tags"]
+-                         ),
++                     st.write("**Tags:** ", ", ".join(model_data["Tags"]) if isinstance(model_data["Tags"], list) else model_data["Tags"])
++                     st.write("**Available Providers:** ", model_data["Providers"])
++                 
++                 # Provider details if available
++                 if model_data["Provider Mapping"]:
++                     st.subheader("Provider Details")
++                     provider_data = []
++                     for provider, info in model_data["Provider Mapping"].items():
++                         provider_data.append({
++                             "Provider": provider,
++                             "Status": info.get("status", "Unknown"),
++                             "URL": info.get("url", ""),
++                             "Documentation": info.get("documentation", "")
++                         })
++                     
++                     st.dataframe(
++                         pd.DataFrame(provider_data),
++                         use_container_width=True,
++                         hide_index=True
+                      )
+                  
+                  # Inference API usage example
+                  st.subheader("Inference API Usage")
++                 
++                 # Get available providers for example code
++                 available_providers = model_data["Provider Mapping"].keys() if model_data["Provider Mapping"] else ["huggingface"]
++                 selected_provider_for_code = st.selectbox(
++                     "Provider for code example:", 
++                     options=available_providers,
++                     index=0
++                 )
++                 
+                  code = f"""
+  from huggingface_hub import InferenceClient
+  
+  # Initialize the client
+- client = InferenceClient()
++ client = InferenceClient(model="{selected_model}")
+  
+  # Run inference on the model
+  response = client.post(
+      json={{"inputs": "YOUR_INPUT_HERE"}},
+-     model="{selected_model}"
++     model="{selected_model}"{', provider="' + selected_provider_for_code + '"' if selected_provider_for_code != "huggingface" else ''}
+  )
++ 
++ # Process response
++ result = response.json()
+  """
+                  st.code(code, language="python")
+```
+
+---
+
+I've updated the HuggingFace models page to include inference provider mapping information. Here are the key changes:
+
+1. **Provider Selection**:
+   - Added a dropdown in the sidebar to filter models by available inference providers
+   - Created a list of known providers like huggingface, together-ai, cohere-ai, etc.
+
+2. **API Enhancement**:
+   - Added `expand=["inferenceProviderMapping"]` to the API call to retrieve provider information
+   - Implemented provider filtering logic to show only models available with the selected provider
+
+3. **UI Improvements**:
+   - Added a "Providers" column to the main dataframe showing available providers for each model
+   - Included provider information in the model details section
+
+4. **Provider Details Table**:
+   - When a model is selected, a dedicated "Provider Details" table shows:
+     - Provider name
+     - Status (warm/cold)
+     - URLs and documentation links if available
+
+5. **Enhanced Code Example**:
+   - Updated the code example to show how to use different providers
+   - Added a dropdown to select which provider to use in the example
+   - Improved the example code with proper initialization and response handling
+
+This implementation gives a comprehensive view of which inference providers are available for each model, making it easier to understand where and how you can use these models for inference.
+
+---
+
+_**User**_
+
+Please fix this error
+
+---
+
+_**Assistant**_
+
+
+
+---
+
 Cancelled
 
 ---
