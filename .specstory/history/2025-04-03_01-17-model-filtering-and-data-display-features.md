@@ -3184,6 +3184,62 @@ Streamlit version: 1.44.1
 
 ---
 
+```bash
+streamlit run pages/9_OpenRouter_models.py
+```
+
+```
+(Free-LLM-API) (base) ➜  Free-LLM-API git:(main) ✗ streamlit run pages/9_OpenRouter_models.py
+
+  You can now view your Streamlit app in your browser.
+
+  Local URL: http://localhost:8503
+  Network URL: http://192.168.6.9:8503
+
+2025-04-03 11:22:43.763 Uncaught app execution
+Traceback (most recent call last):
+  File "/Users/daviddwlee84/Documents/Program/Personal/Free-LLM-API/.venv/lib/python3.12/site-packages/strea
+mlit/runtime/scriptrunner/exec_code.py", line 121, in exec_func_with_error_handling
+    result = func()
+             ^^^^^^
+  File "/Users/daviddwlee84/Documents/Program/Personal/Free-LLM-API/.venv/lib/python3.12/site-packages/strea
+mlit/runtime/scriptrunner/script_runner.py", line 640, in code_to_exec
+    exec(code, module.__dict__)
+  File "/Users/daviddwlee84/Documents/Program/Personal/Free-LLM-API/pages/9_OpenRouter_models.py", line 3, i
+n <module>
+    from open_router import OpenRouter
+ModuleNotFoundError: No module named 'open_router'
+^C
+  Stopping...
+(Free-LLM-API) (base) ➜  Free-LLM-API git:(main) ✗
+```
+
+---
+
+I see the issue. It looks like the Python module is not found. We need to fix the import path for the OpenRouter class. Let's modify the import statement in the Streamlit app:
+
+---
+
+Cancelled
+
+---
+
+_**User**_
+
+How do I fix this warning "`label` got an empty value. This is discouraged for accessibility reasons and may be disallowed in the future by raising an exception. Please provide a non-empty label and hide it with label_visibility if needed."?
+
+---
+
+_**Assistant**_
+
+
+
+---
+
+To fix the empty label warning in your Streamlit sliders, you need to provide a non-empty label and use the `label_visibility` parameter to hide it if needed. Let's modify the slider components:
+
+---
+
 Cancelled
 
 ---

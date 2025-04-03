@@ -41,24 +41,26 @@ with st.sidebar:
     # Context length
     with st.expander("Context length", expanded=True):
         min_context, max_context = st.slider(
-            "",
+            "Context Length Range",
             min_value=1000,
             max_value=1000000,
             value=(4000, 128000),
             step=1000,
             format="%d",
+            label_visibility="collapsed",
         )
         # st.write("4K", "64K", "1M")
 
     # Prompt pricing
     with st.expander("Prompt pricing", expanded=True):
         min_price, max_price = st.slider(
-            "",
+            "Price Range",
             min_value=0.0,
             max_value=0.01,
             value=(0.0, 0.01),
             step=0.0001,
             format="%.5f",
+            label_visibility="collapsed",
         )
         # st.write("FREE", "$0.5", "$10+")
 
