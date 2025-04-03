@@ -57,18 +57,22 @@ with st.sidebar:
     with st.expander("Context length", expanded=True):
         min_context, max_context = st.slider(
             "Context Length Range",
-            min_value=1000,
+            min_value=0,
             max_value=1000000,
-            value=(4000, 128000),
+            value=(0, 0),
             step=1000,
             format="%d",
             label_visibility="collapsed",
         )
 
         # Display formatted values
-        st.caption(
-            f"Selected: {format_number(min_context)} - {format_number(max_context)}"
-        )
+        if max_context > 0:
+            # Display formatted values
+            st.caption(
+                f"Selected: {format_number(min_context)} - {format_number(max_context)}"
+            )
+        else:
+            st.caption("Selected: All")
 
     # Prompt pricing
     with st.expander("Prompt pricing", expanded=True):
@@ -141,7 +145,10 @@ df = api.list_models_df(filtered_models)
 #     df = df[combined_filter]
 
 # Context length filtering (post-query)
-df = df[(df["context_length"] >= min_context) & (df["context_length"] <= max_context)]
+if max_context > 0:
+    df = df[
+        ((df["context_length"] >= min_context) & (df["context_length"] <= max_context))
+    ]
 
 # Display results
 if not df.empty:
