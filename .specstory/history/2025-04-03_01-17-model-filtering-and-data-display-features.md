@@ -3392,11 +3392,275 @@ Now let's also update the price slider to match the same style:
 
 ---
 
-Cancelled
+```diff
+              step=0.0001,
+              format="%.5f",
+-             label_visibility="collapsed",
++             label_visibility="collapsed"
+          )
+-         # st.write("FREE", "$0.5", "$10+")
++         
++         # Display formatted price values
++         price_min_text = "FREE" if min_price == 0 else f"${min_price:.7f}"
++         price_max_text = f"${max_price:.7f}"
++         st.caption(f"Selected: {price_min_text} - {price_max_text}")
++         
++         # Display scale markers
++         cols = st.columns(7)
++         with cols[0]:
++             st.write("FREE")
++         with cols[3]:
++             st.write("$0.5")
++         with cols[6]:
++             st.write("$10+")
+  
+      # Series
+```
 
 ---
 
+Now you have custom formatting for your slider values:
 
+1. The context length slider will show values like "4K", "64K", and "1M" for better readability:
+   - It displays the selected range in K/M notation (e.g., "Selected: 4K - 128K")
+   - It shows scale markers below the slider (4K, 64K, 1M)
+
+2. The price slider follows the same pattern:
+   - It shows "FREE" for zero prices and formatted dollar amounts otherwise
+   - It displays the scale markers (FREE, $0.5, $10+) below the slider
+
+This implementation gives you the human-readable formatting you wanted while still maintaining the slider's technical functionality with numeric values. The combination of the slider with custom formatted labels below provides both precision and readability.
+
+---
+
+_**User**_
+
+Please refine @3_text_->_image.py so that
+
+We have a prompt input text area and a submit button
+And able to show the result image in Streamlit
+Additionally user should be able to select one of the available model to use as well as the provider
+
+---
+
+_**Assistant**_
+
+
+
+---
+
+```diff
+  import streamlit as st
+  from shared_components import api_settings_ui
+- 
++ import os
++ from huggingface_hub import InferenceClient
++ from PIL import Image
++ import tempfile
++ 
++ # Page config
++ st.set_page_config(page_title="Text to Image", layout="wide")
++ st.title("Text -> Image")
++ 
++ # Sidebar for API settings
+  with st.sidebar:
+      api_settings_ui()
+- 
+- st.title("Text -> Image")
+- 
+- from huggingface_hub import InferenceClient
+- import os
+- 
+- # Example with an external provider (e.g. replicate)
+- replicate_client = InferenceClient(
+-     provider="replicate",
+-     api_key=st.session_state["HF_TOKEN"],
+- )
+- replicate_image = replicate_client.text_to_image(
+-     "A flying car crossing a futuristic cityscape.",
+-     model="black-forest-labs/FLUX.1-schnell",
+- )
+- replicate_image.save("flying_car.png")
++     
++     # Provider selection
++     st.subheader("Provider Settings")
++     provider = st.selectbox(
++         "Select Provider",
++         options=["hf-inference", "replicate", "openai", "fireworks-ai", "stability"],
++         index=0,
++         help="Select the provider for image generation"
++     )
++     
++     # Model selection based on provider
++     model_options = {
++         "hf-inference": [
++             "stabilityai/stable-diffusion-xl-base-1.0",
++             "runwayml/stable-diffusion-v1-5",
++             "CompVis/stable-diffusion-v1-4",
++             "stabilityai/sdxl-turbo"
++         ],
++         "replicate": [
++             "stability-ai/sdxl",
++             "stability-ai/stable-diffusion",
++             "black-forest-labs/FLUX.1-schnell",
++             "midjourney/midjourney"
++         ],
++         "openai": ["dall-e-3"],
++         "fireworks-ai": ["fireworks/stable-diffusion-xl"],
++         "stability": ["stable-diffusion-xl-1024-v1-0"]
++     }
++     
++     selected_model = st.selectbox(
++         "Select Model",
++         options=model_options.get(provider, ["default-model"]),
++         index=0,
++         help="Select the model for image generation"
++     )
++     
++     # Advanced options
++     with st.expander("Advanced Options", expanded=False):
++         num_inference_steps = st.slider("Number of Steps", min_value=1, max_value=100, value=30)
++         guidance_scale = st.slider("Guidance Scale", min_value=1.0, max_value=20.0, value=7.5)
++         width = st.select_slider("Width", options=[256, 512, 768, 1024], value=512)
++         height = st.select_slider("Height", options=[256, 512, 768, 1024], value=512)
++ 
++ # Main content area
++ col1, col2 = st.columns([1, 1])
++ 
++ with col1:
++     # Input area
++     st.subheader("Text Prompt")
++     
++     # Example prompts
++     example_prompts = [
++         "A flying car crossing a futuristic cityscape.",
++         "A serene lake surrounded by mountains at sunset.",
++         "A photorealistic robot playing chess in a park.",
++         "A cyberpunk city at night with neon lights."
++     ]
++     
++     example = st.selectbox(
++         "Example prompts (or write your own below)",
++         options=[""] + example_prompts,
++         index=0
++     )
++     
++     # Text prompt input
++     prompt = st.text_area(
++         "Enter your prompt",
++         value=example if example else "",
++         height=150,
++         placeholder="Describe the image you want to generate..."
++     )
++     
++     # Negative prompt
++     negative_prompt = st.text_input(
++         "Negative prompt (optional)",
++         placeholder="Elements to avoid in the image"
++     )
++     
++     # Submit button
++     generate_button = st.button("Generate Image", type="primary", disabled=not prompt or not st.session_state.get("HF_TOKEN", ""))
++ 
++ with col2:
++     # Output area
++     st.subheader("Generated Image")
++     
++     # Display error if API token is not set
++     if not st.session_state.get("HF_TOKEN", ""):
++         st.error("Please set your API token in the sidebar first!")
++     
++     # Placeholder for the image
++     image_placeholder = st.empty()
++ 
++ # Generate image when button is clicked
++ if generate_button and prompt and st.session_state.get("HF_TOKEN", ""):
++     with st.spinner("Generating image..."):
++         try:
++             # Create inference client
++             client = InferenceClient(
++                 model=selected_model,
++                 provider=provider,
++                 token=st.session_state["HF_TOKEN"],
++             )
++             
++             # Different parameters for different providers
++             if provider == "hf-inference":
++                 params = {}
++                 if negative_prompt:
++                     params["negative_prompt"] = negative_prompt
++                 if num_inference_steps:
++                     params["num_inference_steps"] = num_inference_steps
++                 if guidance_scale:
++                     params["guidance_scale"] = guidance_scale
++                     
++                 generated_image = client.text_to_image(
++                     prompt,
++                     **params,
++                     width=width,
++                     height=height,
++                 )
++             else:
++                 # For other providers, parameters may vary
++                 generated_image = client.text_to_image(
++                     prompt,
++                     model=selected_model,
++                 )
++             
++             # Display the generated image
++             image_placeholder.image(generated_image, caption=prompt, use_column_width=True)
++             
++             # Save image temporarily and provide download button
++             with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_file:
++                 generated_image.save(tmp_file.name)
++                 st.download_button(
++                     label="Download Image",
++                     data=open(tmp_file.name, "rb").read(),
++                     file_name="generated_image.png",
++                     mime="image/png"
++                 )
++                 # Clean up temp file
++                 os.unlink(tmp_file.name)
++                 
++         except Exception as e:
++             st.error(f"Error generating image: {str(e)}")
++             st.info("Some models or providers may require specific API access. Please check your credentials.")
+  
+```
+
+---
+
+I've enhanced the text-to-image page with a complete user interface that includes all the requested features:
+
+1. **User Input**:
+   - A text area for entering custom prompts
+   - Example prompts for quick selection
+   - Optional negative prompt input for better control
+
+2. **Model Selection**:
+   - Provider selection dropdown (HF Inference, Replicate, OpenAI, Fireworks, Stability)
+   - Model selection dropdown that updates based on the chosen provider
+   - Advanced options for customizing generation parameters (steps, guidance scale, dimensions)
+
+3. **Image Generation and Display**:
+   - "Generate Image" button to trigger the process
+   - Real-time display of the generated image in the right column
+   - Download button for saving the generated image
+   - Error handling with informative messages
+
+4. **Layout and Organization**:
+   - Two-column layout for efficient use of space
+   - Clear section headers
+   - Organized sidebar with collapsible advanced options
+
+The code also includes validation to ensure the user has set their API token and entered a prompt before attempting to generate an image. Different providers may require different parameters, so the code handles this by adjusting the API call based on the selected provider.
+
+To use the app:
+1. Enter your API token in the sidebar
+2. Select a provider and model
+3. Enter your prompt or choose an example
+4. Click "Generate Image"
+5. Download the result if desired
 
 ---
 
