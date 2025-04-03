@@ -1,5 +1,6 @@
 import streamlit as st
 from huggingface_hub import HfApi
+from huggingface_hub.inference._providers import PROVIDERS, get_provider_helper
 import pandas as pd
 import logging
 
@@ -18,6 +19,58 @@ def format_number(num):
         return f"{num/1000:.1f}K"
     else:
         return str(num)
+
+
+# Helper function to check if a task is supported by a provider
+def is_task_supported(provider, task):
+    try:
+        get_provider_helper(provider, task)
+        return True
+    except ValueError:
+        return False
+
+
+# Helper function to normalize provider names
+def normalize_provider_name(provider_name):
+    """
+    Convert provider names from the API response to match the names in PROVIDERS
+    """
+    # Mapping from API response names to PROVIDERS keys
+    mapping = {
+        "huggingface": "hf-inference",
+        "inference-endpoint": "hf-inference",
+        "together-ai": "together",
+        "cohere-ai": "cohere",
+        "fireworks-ai": "fireworks-ai",
+        "cerebras": "cerebras",
+        "nebius-ai": "nebius",
+        "hyperbolic": "hyperbolic",
+        "fal-ai": "fal-ai",
+        "black-forest-labs": "black-forest-labs",
+        "novita-ai": "novita",
+        "replicate": "replicate",
+        "sambanova": "sambanova",
+    }
+    return mapping.get(provider_name, provider_name)
+
+
+# Function to check if a task exists across all providers
+def check_task_exists(task):
+    """
+    Check if a task exists in any provider
+    """
+    for provider in PROVIDERS:
+        if task in PROVIDERS[provider]:
+            return True
+    return False
+
+
+# Get all unique supported tasks across all providers
+def get_all_supported_tasks():
+    all_tasks = set()
+    for provider in PROVIDERS:
+        all_tasks.update(PROVIDERS[provider].keys())
+    return all_tasks
 
 
 # Common NLP and ML tasks from https://huggingface.co/tasks
@@ -47,22 +100,14 @@ TASKS = [
     "audio-classification",
 ]
 
-# Known inference providers
-PROVIDERS = [
-    "huggingface",
-    "inference-endpoint",
-    "together-ai",
-    "cohere-ai",
-    "fireworks-ai",
-    "cerebras",
-    "nebius-ai",
-    "hyperbolic",
-    "fal-ai",
-    "black-forest-labs",
-    "novita-ai",
-    "replicate",
-    "sambanova",
-]
+# Add conversational and text-to-video tasks which are widely supported
+TASKS.extend(["conversational", "text-to-video"])
+
+# Get providers from huggingface_hub
+PROVIDER_LIST = list(PROVIDERS.keys())
+
+# Get all supported tasks
+ALL_SUPPORTED_TASKS = get_all_supported_tasks()
 
 # Page configuration
 st.set_page_config(page_title="HuggingFace Models", layout="wide")
@@ -104,9 +149,91 @@ with st.sidebar:
         with st.expander("Inference Provider", expanded=True):
             selected_provider = st.selectbox(
                 "Provider",
-                options=["Any"] + PROVIDERS,
+                options=["Any"] + PROVIDER_LIST,
                 help="Filter models by available inference provider",
             )
+
+        # Display providers in a table
+        with st.expander("Available Providers", expanded=False):
+            provider_data = []
+            for provider in PROVIDER_LIST:
+                # Get supported tasks from the PROVIDERS dictionary
+                supported_tasks = list(PROVIDERS[provider].keys())
+
+                # Check which of our defined TASKS are supported
+                supported_in_our_list = []
+                for task in TASKS:
+                    if task in supported_tasks:
+                        supported_in_our_list.append(task)
+
+                provider_data.append(
+                    {
+                        "Provider": provider,
+                        "Supported Tasks Count": len(supported_tasks),
+                        "All Supported Tasks": (
+                            ", ".join(supported_tasks) if supported_tasks else "None"
+                        ),
+                        "Matching Our Tasks": (
+                            ", ".join(supported_in_our_list)
+                            if supported_in_our_list
+                            else "None"
+                        ),
+                    }
+                )
+
+            st.dataframe(
+                pd.DataFrame(provider_data), use_container_width=True, hide_index=True
+            )
+
+            # Check for missing tasks in our TASKS list
+            missing_tasks = ALL_SUPPORTED_TASKS.difference(TASKS)
+            if missing_tasks:
+                st.subheader("Tasks Not In Our List")
+                st.info(
+                    f"These tasks are supported by providers but not in our TASKS list: {', '.join(sorted(missing_tasks))}"
+                )
+
+                # Show which providers support each missing task - without using a nested expander
+                st.subheader("Providers for Missing Tasks")
+                missing_task_data = []
+                for task in sorted(missing_tasks):
+                    supporting_providers = []
+                    for provider in PROVIDER_LIST:
+                        if task in PROVIDERS[provider]:
+                            supporting_providers.append(provider)
+                    missing_task_data.append(
+                        {
+                            "Task": task,
+                            "Supporting Providers": ", ".join(supporting_providers),
+                            "Provider Count": len(supporting_providers),
+                        }
+                    )
+
+                st.dataframe(
+                    pd.DataFrame(missing_task_data),
+                    use_container_width=True,
+                    hide_index=True,
+                )
+
+            # Add a task existence checker
+            st.subheader("Task Support Checker")
+            task_to_check = st.selectbox(
+                "Select a task to check support", options=TASKS
+            )
+            if task_to_check:
+                supporting_providers = []
+                for provider in PROVIDER_LIST:
+                    if task_to_check in PROVIDERS[provider]:
+                        supporting_providers.append(provider)
+
+                if supporting_providers:
+                    st.success(
+                        f"Task '{task_to_check}' is supported by: {', '.join(supporting_providers)}"
+                    )
+                else:
+                    st.warning(
+                        f"Task '{task_to_check}' is not supported by any provider"
+                    )
 
     # Result limiting
     with st.expander("Results", expanded=True):
@@ -169,19 +296,24 @@ with st.spinner(f"Fetching models from HuggingFace Hub..."):
                             mapping = model.inference_provider_mapping
                             if isinstance(mapping, dict):
                                 provider_mapping = mapping
-                                providers = list(mapping.keys())
+                                # Normalize provider names
+                                providers = [
+                                    normalize_provider_name(p) for p in mapping.keys()
+                                ]
                             elif isinstance(mapping, list):
                                 # Handle the case where it's a list
                                 logger.info(
                                     f"Model {model.id} has a list for inference_provider_mapping: {mapping}"
                                 )
                                 providers = [
-                                    p.get("id", "unknown")
+                                    normalize_provider_name(p.get("id", "unknown"))
                                     for p in mapping
                                     if isinstance(p, dict) and "id" in p
                                 ]
                                 provider_mapping = {
-                                    p.get("id", f"provider_{i}"): p
+                                    normalize_provider_name(
+                                        p.get("id", f"provider_{i}")
+                                    ): p
                                     for i, p in enumerate(mapping)
                                     if isinstance(p, dict)
                                 }
@@ -317,12 +449,12 @@ with st.spinner(f"Fetching models from HuggingFace Hub..."):
                     st.subheader("Inference API Usage")
 
                     # Get available providers for example code
-                    available_providers = ["huggingface"]
+                    available_providers = ["hf-inference"]
                     if show_providers and model_data["Provider Mapping"]:
                         available_providers = (
                             model_data["Providers"]
                             if model_data["Providers"]
-                            else ["huggingface"]
+                            else ["hf-inference"]
                         )
 
                     selected_provider_for_code = st.selectbox(
@@ -340,7 +472,7 @@ client = InferenceClient(model="{selected_model}")
 # Run inference on the model
 response = client.post(
     json={{"inputs": "YOUR_INPUT_HERE"}},
-    model="{selected_model}"{', provider="' + selected_provider_for_code + '"' if selected_provider_for_code != "huggingface" else ''}
+    model="{selected_model}"{', provider="' + selected_provider_for_code + '"' if selected_provider_for_code != "hf-inference" else ''}
 )
 
 # Process response
