@@ -9,17 +9,24 @@ import tempfile
 st.set_page_config(page_title="Text to Image", layout="wide")
 st.title("Text -> Image")
 
+st.link_button(
+    "Hugging Face Text to Image Task",
+    "https://huggingface.co/docs/inference-providers/tasks/text-to-image",
+)
+
 # Sidebar for API settings
 with st.sidebar:
     api_settings_ui()
 
     # Provider selection
     st.subheader("Provider Settings")
+    st.caption("NOTE: Some models here are hallucinations")
     provider = st.selectbox(
         "Select Provider",
         options=["hf-inference", "replicate", "openai", "fireworks-ai", "stability"],
         index=1,
         help="Select the provider for image generation",
+        # "`"black-forest-labs"`, `"cerebras"`, `"cohere"`, `"fal-ai"`, `"fireworks-ai"`, `"hf-inference"`, `"hyperbolic"`, `"nebius"`, `"novita"`, `"openai"`, `"replicate"`, "sambanova"` or `"together"`"
     )
 
     # Model selection based on provider
